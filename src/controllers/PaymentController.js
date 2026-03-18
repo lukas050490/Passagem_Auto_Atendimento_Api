@@ -8,8 +8,6 @@ class PaymentController {
     try {
       const { reservation_id, method, amount } = req.body;
 
-      console.log("Processando pagamento:", { reservation_id, method, amount });
-
       // Validações básicas
       if (!reservation_id || !method || !amount) {
         return res.status(400).json({

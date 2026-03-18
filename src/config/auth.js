@@ -1,4 +1,4 @@
 module.exports = {
-  secret: 'supersecretkey', // depois mover para .env
-  expiresIn: '1d',
+  secret: process.env.APP_SECRET,
+  expiresIn: process.env.APP_EXPIRES_IN,
 };

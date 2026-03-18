@@ -16,7 +16,7 @@ module.exports = (req, res, next) => {
     req.adminId = decoded.id;
     req.adminRole = decoded.role;
     req.companyId = decoded.company_id;
-    console.log('middleware rodou');
+
 
     return next();
   } catch {

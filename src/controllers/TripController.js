@@ -63,7 +63,6 @@ class TripController {
   async availableTimes(req, res) {
     const { origin, destination, date } = req.query;
 
-    console.log('Parâmetros recebidos:', { origin, destination, date });
 
     if (!origin || !destination || !date) {
       return res
@@ -87,8 +86,6 @@ class TripController {
           },
         ],
       });
-
-      console.log(`Encontradas ${trips.length} viagens`);
 
       // 2. Para cada viagem, verificar disponibilidade
       const availableTrips = [];
@@ -117,10 +114,6 @@ class TripController {
             }
           ]
         });
-
-        console.log(
-          `Trip ${trip.id}: totalSeats=${totalSeats}, activeReservations=${activeReservations}`,
-        );
 
         // Se há assentos disponíveis, adicionar à lista
         if (totalSeats > activeReservations) {

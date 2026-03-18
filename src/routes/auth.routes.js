@@ -10,6 +10,7 @@ const TicketController = require('../controllers/TicketController');
 
 const routes = express.Router();
 
+// Rotas públicas
 routes.post('/login', AuthController.login);
 routes.get('/trips/:tripId/available', SeatController.available);
 routes.get('/trips', TripController.index);
@@ -19,6 +20,13 @@ routes.post('/reservations', ReservationController.create);
 routes.post('/payments', PaymentController.create);
 routes.get('/tickets/:reservation_id', TicketController.show);
 
+// Novas rotas para reserva temporária
+routes.post('/trips/:tripId/seats/reserve', SeatController.reserve);
+routes.post('/trips/:tripId/seats/release', SeatController.release);
+routes.post('/trips/:tripId/seats/confirm', SeatController.confirm);
+routes.post('/sessions/cleanup', SeatController.cleanupSession);
+
+// Rotas protegidas (requerem autenticação)
 routes.use(authMiddleware);
 
 routes.post('/companies', CompanyController.create);

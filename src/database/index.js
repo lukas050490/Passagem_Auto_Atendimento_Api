@@ -9,8 +9,9 @@ const Reservation = require('../app/models/Reservation.js');
 const Payment = require('../app/models/Payment.js');
 const Ticket = require('../app/models/Ticket.js');
 const ReservationSeat = require('../app/models/ReservationSeat.js');
+const TempReservation = require('../app/models/TempReservation.js')
 
-const models = [Company, Admin, Trip, Seat, Reservation, Payment, Ticket, ReservationSeat];
+const models = [Company, Admin, Trip, Seat, Reservation, Payment, Ticket, ReservationSeat, TempReservation];
 
 class Database {
   constructor() {

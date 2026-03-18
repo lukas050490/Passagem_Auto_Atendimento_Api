@@ -15,19 +15,27 @@ class Seat extends Model {
           allowNull: false,
         },
         seat_number: {
-          type: DataTypes.INTEGER,
+          type: DataTypes.STRING,
           allowNull: false,
+        },
+        status: {
+          type: DataTypes.ENUM('available', 'reserved', 'sold'),
+          defaultValue: 'available',
+          allowNull: false,
+        },
+        reserved_until: {
+          type: DataTypes.DATE,
+          allowNull: true,
+        },
+        reserved_by_session: {
+          type: DataTypes.STRING,
+          allowNull: true,
         },
       },
       {
         sequelize,
+        modelName: 'Seat',
         tableName: 'seats',
-        indexes: [
-          {
-            unique: true,
-            fields: ['trip_id', 'seat_number'],
-          },
-        ],
       },
     );
   }
