@@ -59,10 +59,185 @@ class TripController {
     }
   }
 
+  // 🔥 UPDATE - Atualizar viagem
+  async update(req, res) {
+    try {
+      const { id } = req.params;
+      const {
+        origin,
+        destination,
+        departure_time,
+        arrival_time,
+        service_type,
+        price,
+        total_seats,
+      } = req.body;
+
+      // Verificar se a viagem existe
+      const trip = await Trip.findByPk(id);
+
+      if (!trip) {
+        return res.status(404).json({ error: 'Viagem não encontrada' });
+      }
+
+      // Verificar se a empresa tem permissão (opcional, se for SUPER_ADMIN pode editar qualquer uma)
+      if (req.userRole !== 'SUPER_ADMIN' && trip.company_id !== req.companyId) {
+        return res.status(403).json({ error: 'Sem permissão para editar esta viagem' });
+      }
+
+      // Atualizar dados da viagem
+      await trip.update({
+        origin: origin || trip.origin,
+        destination: destination || trip.destination,
+        departure_time: departure_time || trip.departure_time,
+        arrival_time: arrival_time || trip.arrival_time,
+        service_type: service_type || trip.service_type,
+        price: price || trip.price,
+      });
+
+      // Se total_seats foi informado e é diferente do atual, ajustar os assentos
+      if (total_seats && total_seats !== trip.total_seats) {
+        const currentSeats = await Seat.findAll({
+          where: { trip_id: id },
+          order: [['seat_number', 'ASC']]
+        });
+
+        const currentCount = currentSeats.length;
+
+        if (total_seats > currentCount) {
+          // Adicionar novos assentos
+          const newSeats = [];
+          for (let i = currentCount + 1; i <= total_seats; i++) {
+            newSeats.push({
+              trip_id: id,
+              seat_number: i,
+            });
+          }
+          await Seat.bulkCreate(newSeats);
+        } else if (total_seats < currentCount) {
+          // Verificar se os assentos a serem removidos estão ocupados
+          const seatsToRemove = currentSeats.slice(total_seats);
+          const seatsToRemoveIds = seatsToRemove.map(s => s.id);
+
+          // Verificar se algum assento está reservado ou vendido
+          const occupiedSeats = await ReservationSeat.findAll({
+            where: {
+              seat_id: seatsToRemoveIds,
+              trip_id: id
+            },
+            include: [{
+              model: Reservation,
+              as: 'reservation',
+              where: {
+                status: {
+                  [Op.in]: ['PENDING', 'PAID']
+                }
+              },
+              required: true
+            }]
+          });
+
+          if (occupiedSeats.length > 0) {
+            return res.status(400).json({
+              error: 'Não é possível reduzir o número de assentos pois alguns estão ocupados',
+              occupiedSeats: occupiedSeats.map(s => s.seat_number)
+            });
+          }
+
+          // Remover assentos excedentes
+          await Seat.destroy({
+            where: {
+              id: seatsToRemoveIds
+            }
+          });
+        }
+      }
+
+      // Buscar a viagem atualizada com os assentos
+      const updatedTrip = await Trip.findByPk(id, {
+        include: [{
+          model: Seat,
+          as: 'seats'
+        }]
+      });
+
+      return res.json({
+        message: 'Viagem atualizada com sucesso',
+        trip: updatedTrip
+      });
+
+    } catch (error) {
+      console.error('Erro ao atualizar viagem:', error);
+      return res.status(500).json({
+        error: 'Erro interno do servidor',
+        details: error.message
+      });
+    }
+  }
+
+  // 🔥 DELETE - Excluir viagem
+  async delete(req, res) {
+    try {
+      const { id } = req.params;
+
+      // Verificar se a viagem existe
+      const trip = await Trip.findByPk(id);
+
+      if (!trip) {
+        return res.status(404).json({ error: 'Viagem não encontrada' });
+      }
+
+      // Verificar se a empresa tem permissão
+      if (req.userRole !== 'SUPER_ADMIN' && trip.company_id !== req.companyId) {
+        return res.status(403).json({ error: 'Sem permissão para excluir esta viagem' });
+      }
+
+      // Verificar se há reservas ativas (PENDING ou PAID)
+      const activeReservations = await ReservationSeat.findOne({
+        where: { trip_id: id },
+        include: [{
+          model: Reservation,
+          as: 'reservation',
+          where: {
+            status: {
+              [Op.in]: ['PENDING', 'PAID']
+            }
+          },
+          required: true
+        }]
+      });
+
+      if (activeReservations) {
+        return res.status(400).json({
+          error: 'Não é possível excluir viagem com reservas ativas. As reservas devem ser canceladas primeiro.'
+        });
+      }
+
+      // Excluir assentos da viagem
+      await Seat.destroy({ where: { trip_id: id } });
+
+      // Excluir registros de reservation_seats (se houver, mas já foram verificados)
+      await ReservationSeat.destroy({ where: { trip_id: id } });
+
+      // Excluir a viagem
+      await trip.destroy();
+
+      return res.json({
+        message: 'Viagem excluída com sucesso',
+        deletedTripId: id
+      });
+
+    } catch (error) {
+      console.error('Erro ao excluir viagem:', error);
+      return res.status(500).json({
+        error: 'Erro interno do servidor',
+        details: error.message
+      });
+    }
+  }
 
   async availableTimes(req, res) {
     const { origin, destination, date } = req.query;
-
 
     if (!origin || !destination || !date) {
       return res
@@ -93,7 +268,7 @@ class TripController {
       for (const trip of trips) {
         const totalSeats = trip.seats ? trip.seats.length : 0;
 
-        // CORREÇÃO AQUI: Contar reservas ativas através da ReservationSeat
+        // Contar reservas ativas através da ReservationSeat
         const activeReservations = await ReservationSeat.count({
           where: {
             trip_id: trip.id
